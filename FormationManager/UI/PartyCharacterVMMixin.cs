@@ -63,7 +63,7 @@ namespace FormationManager.UI
 
         // ── Commands (void methods — bound via Command.Click in the widget XML) ──
 
-        [DataSourceProperty]
+        [DataSourceMethod]
         public void ExecuteCycleFormation()
         {
             var character = ViewModel?.Character;
@@ -90,7 +90,7 @@ namespace FormationManager.UI
             Refresh();
         }
 
-        [DataSourceProperty]
+        [DataSourceMethod]
         public void ExecuteClearFormation()
         {
             var character = ViewModel?.Character;
