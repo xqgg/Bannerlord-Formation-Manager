@@ -5,16 +5,16 @@
     The badge sits to the left of the lock button (MarginRight ~30px) in the Main panel.
     Click = cycle formation, right-click = clear.
   -->
-  <Widget WidthSizePolicy="Fixed"
-          HeightSizePolicy="Fixed"
-          SuggestedWidth="32"
-          SuggestedHeight="32"
-          HorizontalAlignment="Right"
-          VerticalAlignment="Center"
-          MarginRight="55"
-          IsVisible="@IsFormationBadgeVisible"
-          Command.Click="ExecuteCycleFormation"
-          Command.AlternateClick="ExecuteClearFormation">
+  <ButtonWidget WidthSizePolicy="Fixed"
+                HeightSizePolicy="Fixed"
+                SuggestedWidth="32"
+                SuggestedHeight="32"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                MarginRight="165"
+                IsVisible="@IsFormationBadgeVisible"
+                Command.Click="ExecuteCycleFormation"
+                Command.AlternateClick="ExecuteClearFormation">
     <Children>
       <!-- Background circle -->
       <Widget WidthSizePolicy="StretchToParent"
@@ -33,5 +33,5 @@
                   Brush.TextVerticalAlignment="Center"
                   DoNotAcceptEvents="true" />
     </Children>
-  </Widget>
+  </ButtonWidget>
 </Prefab>
