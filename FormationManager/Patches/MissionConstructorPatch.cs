@@ -3,7 +3,6 @@ using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.CampaignSystem.Party;
-using TaleWorlds.CampaignSystem.Encounters;
 using FormationManager.Data;
 
 namespace FormationManager.Patches
@@ -36,23 +35,11 @@ namespace FormationManager.Patches
                 return vanillaClass;
 
             // Ensure we only override the player's side to avoid breaking enemy deployment/AI.
-            // Since Mission.Current.PlayerTeam might be null during early setup, we use PlayerEncounter.
-            if (PlayerEncounter.Current != null)
+            if (Mission.Current != null && Mission.Current.PlayerTeam != null)
             {
-                if (side != PlayerEncounter.Current.PlayerSide)
+                if (side != Mission.Current.PlayerTeam.Side)
                 {
                     return vanillaClass;
-                }
-            }
-            else
-            {
-                // Fallback check if PlayerEncounter is somehow null
-                if (Mission.Current != null && Mission.Current.PlayerTeam != null)
-                {
-                    if (side != Mission.Current.PlayerTeam.Side)
-                    {
-                        return vanillaClass;
-                    }
                 }
             }
 
