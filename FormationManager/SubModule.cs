@@ -18,8 +18,25 @@ namespace FormationManager
         {
             base.OnSubModuleLoad();
 
-            _harmony = new Harmony("com.formationmanager");
-            _harmony.PatchAll();
+            // Clear log from previous session so we start fresh
+            try
+            {
+                string docs = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+                string logPath = System.IO.Path.Combine(docs, "Mount and Blade II Bannerlord", "Configs", "FormationManager", "log.txt");
+                if (System.IO.File.Exists(logPath)) System.IO.File.Delete(logPath);
+            }
+            catch { }
+
+            try
+            {
+                _harmony = new Harmony("com.formationmanager");
+                _harmony.PatchAll();
+                Logger.Log("[SubModule] Harmony.PatchAll() succeeded.");
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log($"[SubModule] Harmony.PatchAll() FAILED: {ex}");
+            }
         }
 
         protected override void OnBeforeInitialModuleScreenSetAsRoot()
@@ -82,6 +99,7 @@ namespace FormationManager
         public override void OnBeforeMissionBehaviorInitialize(Mission mission)
         {
             base.OnBeforeMissionBehaviorInitialize(mission);
+            Logger.Log($"[SubModule] OnBeforeMissionBehaviorInitialize fired. Mission={mission?.GetType()?.Name}");
         }
 
         public override void OnGameEnd(Game game)
