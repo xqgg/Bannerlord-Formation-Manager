@@ -13,16 +13,11 @@
                 VerticalAlignment="Center"
                 MarginRight="165"
                 IsVisible="@IsFormationBadgeVisible"
+                Brush="Party.UpgradeSlot.Button"
+                DoNotPassEventsToChildren="true"
                 Command.Click="ExecuteCycleFormation"
                 Command.AlternateClick="ExecuteClearFormation">
     <Children>
-      <!-- Background circle -->
-      <Widget WidthSizePolicy="StretchToParent"
-              HeightSizePolicy="StretchToParent"
-              Sprite="BlankWhiteSquare_9"
-              Color="#1A1208FF"
-              AlphaFactor="0.85"
-              DoNotAcceptEvents="true" />
       <!-- Formation number label -->
       <TextWidget WidthSizePolicy="StretchToParent"
                   HeightSizePolicy="StretchToParent"
