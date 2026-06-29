@@ -2,8 +2,10 @@ using HarmonyLib;
 using TaleWorlds.CampaignSystem;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
+using TaleWorlds.MountAndBlade.ComponentInterfaces;
 using Bannerlord.UIExtenderEx;
 using FormationManager.Data;
+using System.Linq;
 
 namespace FormationManager
 {
@@ -13,7 +15,6 @@ namespace FormationManager
         private static UIExtender? _uiExtender;
 
         private static bool _uiExtenderInitialized;
-        private static bool _sandboxPatched;
 
         protected override void OnSubModuleLoad()
         {
@@ -85,28 +86,23 @@ namespace FormationManager
         {
             base.OnGameStart(game, gameStarter);
 
-            if (!_sandboxPatched)
+            // Natively register our custom BattleInitializationModel decorator
+            try
             {
-                _sandboxPatched = true;
-                try
+                var vanillaModel = gameStarter.Models.OfType<BattleInitializationModel>().FirstOrDefault();
+                if (vanillaModel != null)
                 {
-                    Type type = AccessTools.TypeByName("Sandbox.SandboxBattleInitializationModel");
-                    if (type != null && _harmony != null)
-                    {
-                        var original = AccessTools.Method(type, "GetAllAvailableTroopTypes");
-                        var postfix = AccessTools.Method(typeof(Patches.SandboxBattleInitializationModelPatch), nameof(Patches.SandboxBattleInitializationModelPatch.Postfix));
-                        _harmony.Patch(original, postfix: new HarmonyMethod(postfix));
-                        Logger.Log("[SubModule] Manually patched SandboxBattleInitializationModel.GetAllAvailableTroopTypes successfully inside OnGameStart.");
-                    }
-                    else
-                    {
-                        Logger.Log("[SubModule] SandboxBattleInitializationModel type not found in OnGameStart.");
-                    }
+                    gameStarter.AddModel(new Models.FormationManagerBattleInitializationModel(vanillaModel));
+                    Logger.Log("[SubModule] Natively registered FormationManagerBattleInitializationModel successfully.");
                 }
-                catch (System.Exception ex)
+                else
                 {
-                    Logger.Log($"[SubModule] Failed to manually patch SandboxBattleInitializationModel inside OnGameStart: {ex}");
+                    Logger.Log("[SubModule] Vanilla BattleInitializationModel not found to override.");
                 }
+            }
+            catch (System.Exception ex)
+            {
+                Logger.Log($"[SubModule] Failed to natively register battle initialization model: {ex}");
             }
         }
 
