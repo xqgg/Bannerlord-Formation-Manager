@@ -20,8 +20,18 @@ namespace FormationManager.UI
         private string _formationLabel = "\u2014";
         private bool _isFormationBadgeVisible;
 
+        private static int _instantiationCount = 0;
+
         public PartyCharacterVMMixin(PartyCharacterVM vm) : base(vm)
         {
+            _instantiationCount++;
+            try
+            {
+                string docs = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+                string path = System.IO.Path.Combine(docs, "Mount and Blade II Bannerlord", "Configs", "FormationManager_VMDebug.txt");
+                System.IO.File.WriteAllText(path, $"Mixin instantiated. Count: {_instantiationCount}. Last Troop: {vm?.Character?.Name?.ToString() ?? "null"}");
+            }
+            catch {}
             Refresh();
         }
 

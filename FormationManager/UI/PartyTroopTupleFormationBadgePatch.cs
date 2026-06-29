@@ -8,7 +8,7 @@ namespace FormationManager.UI
     /// Click  = cycle formation assignment (none → I … VIII → none)
     /// Right-click = clear
     /// </summary>
-    [PrefabExtension("PartyTroopTuple", "descendant::BrushWidget[@Id='Main']/Children")]
+    [PrefabExtension("PartyTroopTuple", "descendant::ButtonWidget[@Id='LockButton']")]
     public class PartyTroopTupleFormationBadgePatch : PrefabExtensionInsertPatch
     {
         public override InsertType Type => InsertType.Append;
