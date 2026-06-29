@@ -1,0 +1,50 @@
+<Prefab>
+  <!-- 
+    UIExtenderEx PrefabExtension for PartyTroopTuple.
+    Injects a formation assignment badge into each player-side troop row.
+    The badge sits to the left of the lock button (MarginRight ~30px) in the Main panel.
+    Click = cycle formation, right-click = clear.
+  -->
+  <PrefabExtension Id="PartyTroopTuple_FormationBadge"
+                   File="SandBox\GUI\Prefabs\Party\PartyTroopTuple.xml"
+                   Type="Insert"
+                   XPath="descendant::BrushWidget[@Id='Main']/Children">
+    <Widget DataSource="{FormationManager.UI.PartyCharacterVMMixin}"
+            WidthSizePolicy="Fixed"
+            HeightSizePolicy="Fixed"
+            SuggestedWidth="32"
+            SuggestedHeight="32"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Center"
+            MarginRight="32"
+            IsVisible="@IsFormationBadgeVisible"
+            Command.Click="ExecuteCycleFormation"
+            Command.AlternateClick="ExecuteClearFormation">
+      <Children>
+        <!-- Background circle -->
+        <Widget WidthSizePolicy="StretchToParent"
+                HeightSizePolicy="StretchToParent"
+                Sprite="BlankWhiteSquare_9"
+                Color="#1A1208FF"
+                AlphaFactor="0.85"
+                DoNotAcceptEvents="true" />
+        <!-- Formation number label -->
+        <TextWidget WidthSizePolicy="StretchToParent"
+                    HeightSizePolicy="StretchToParent"
+                    Text="@FormationLabel"
+                    Brush="Party.Text.Tuple"
+                    Brush.FontSize="18"
+                    Brush.TextHorizontalAlignment="Center"
+                    Brush.TextVerticalAlignment="Center"
+                    DoNotAcceptEvents="true" />
+        <!-- Tooltip hint -->
+        <HintWidget DataSource="{FormationHint}"
+                    WidthSizePolicy="StretchToParent"
+                    HeightSizePolicy="StretchToParent"
+                    Command.HoverBegin="ExecuteBeginHint"
+                    Command.HoverEnd="ExecuteEndHint"
+                    IsEnabled="false" />
+      </Children>
+    </Widget>
+  </PrefabExtension>
+</Prefab>

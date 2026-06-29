@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Library</OutputType>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0</AssemblyVersion>
+    <FileVersion>0.1.0</FileVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <BannerlordGameBin Condition="'$(BannerlordGameBin)' == ''">E:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\bin\Win64_Shipping_Client</BannerlordGameBin>
+    <BannerlordWorkshopRoot Condition="'$(BannerlordWorkshopRoot)' == ''">E:\SteamLibrary\steamapps\workshop\content\261550</BannerlordWorkshopRoot>
+    <BannerlordModulesRoot Condition="'$(BannerlordModulesRoot)' == ''">E:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules</BannerlordModulesRoot>
+    <MCMv5Path Condition="'$(MCMv5Path)' == ''">$(BannerlordModulesRoot)\Bannerlord.MBOptionScreen\bin\Win64_Shipping_Client\MCMv5.dll</MCMv5Path>
+    <HarmonyPath Condition="'$(HarmonyPath)' == ''">$(BannerlordModulesRoot)\Bannerlord.Harmony\bin\Win64_Shipping_Client\0Harmony.dll</HarmonyPath>
+    <UIExtenderExPath Condition="'$(UIExtenderExPath)' == ''">$(BannerlordModulesRoot)\Bannerlord.UIExtenderEx\bin\Win64_Shipping_Client\Bannerlord.UIExtenderEx.dll</UIExtenderExPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="All" />
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyPath)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="MCMv5">
+      <HintPath>$(MCMv5Path)</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Bannerlord.UIExtenderEx">
+      <HintPath>$(UIExtenderExPath)</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TaleWorlds.Core">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Core.ViewModelCollection">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.Core.ViewModelCollection.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.CampaignSystem">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.CampaignSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.CampaignSystem.ViewModelCollection">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.CampaignSystem.ViewModelCollection.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Library">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.Library.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.MountAndBlade">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.MountAndBlade.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.ObjectSystem">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.ObjectSystem.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.Localization">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.Localization.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="TaleWorlds.DotNet">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.DotNet.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(BannerlordGameBin)\Newtonsoft.Json.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copy GUI prefab extensions into output alongside the DLL -->
+  <ItemGroup>
+    <Content Include="GUI\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SkipBannerlordModuleCopy)' != 'true'">
+    <PropertyGroup>
+      <ModFolder>E:\SteamLibrary\steamapps\common\Mount &amp; Blade II Bannerlord\Modules\FormationManager</ModFolder>
+      <ModBinFolder>$(ModFolder)\bin\Win64_Shipping_Client</ModBinFolder>
+      <ModGuiFolder>$(ModFolder)\GUI</ModGuiFolder>
+    </PropertyGroup>
+    <MakeDir Directories="$(ModBinFolder)" Condition="!Exists('$(ModBinFolder)')" />
+    <MakeDir Directories="$(ModGuiFolder)" Condition="!Exists('$(ModGuiFolder)')" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(ModBinFolder)" />
+    <Copy SourceFiles="SubModule.xml" DestinationFolder="$(ModFolder)" />
+    <Exec Command="xcopy /E /I /Y &quot;$(MSBuildProjectDirectory)\GUI&quot; &quot;$(ModGuiFolder)&quot;" />
+  </Target>
+</Project>
