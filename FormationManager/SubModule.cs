@@ -19,6 +19,11 @@ namespace FormationManager
 
             _harmony = new Harmony("com.formationmanager");
             _harmony.PatchAll();
+        }
+
+        protected override void OnBeforeInitialModuleScreenSetAsRoot()
+        {
+            base.OnBeforeInitialModuleScreenSetAsRoot();
 
             _uiExtender = UIExtender.Create("FormationManager");
             _uiExtender.Register(typeof(SubModule).Assembly);
