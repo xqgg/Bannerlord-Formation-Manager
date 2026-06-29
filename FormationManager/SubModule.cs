@@ -13,6 +13,7 @@ namespace FormationManager
         private static UIExtender? _uiExtender;
 
         private static bool _uiExtenderInitialized;
+        private static bool _sandboxPatched;
 
         protected override void OnSubModuleLoad()
         {
@@ -78,32 +79,35 @@ namespace FormationManager
                     }
                 }
             }
-
-            // Manually patch SandboxBattleInitializationModel once Sandbox.dll is fully loaded
-            try
-            {
-                Type type = AccessTools.TypeByName("Sandbox.SandboxBattleInitializationModel");
-                if (type != null && _harmony != null)
-                {
-                    var original = AccessTools.Method(type, "GetAllAvailableTroopTypes");
-                    var postfix = AccessTools.Method(typeof(Patches.SandboxBattleInitializationModelPatch), nameof(Patches.SandboxBattleInitializationModelPatch.Postfix));
-                    _harmony.Patch(original, postfix: new HarmonyMethod(postfix));
-                    Logger.Log("[SubModule] Manually patched SandboxBattleInitializationModel.GetAllAvailableTroopTypes successfully.");
-                }
-                else
-                {
-                    Logger.Log("[SubModule] SandboxBattleInitializationModel type not found in OnBeforeInitialModuleScreenSetAsRoot.");
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Logger.Log($"[SubModule] Failed to manually patch SandboxBattleInitializationModel: {ex}");
-            }
         }
 
         protected override void OnGameStart(Game game, IGameStarter gameStarter)
         {
             base.OnGameStart(game, gameStarter);
+
+            if (!_sandboxPatched)
+            {
+                _sandboxPatched = true;
+                try
+                {
+                    Type type = AccessTools.TypeByName("Sandbox.SandboxBattleInitializationModel");
+                    if (type != null && _harmony != null)
+                    {
+                        var original = AccessTools.Method(type, "GetAllAvailableTroopTypes");
+                        var postfix = AccessTools.Method(typeof(Patches.SandboxBattleInitializationModelPatch), nameof(Patches.SandboxBattleInitializationModelPatch.Postfix));
+                        _harmony.Patch(original, postfix: new HarmonyMethod(postfix));
+                        Logger.Log("[SubModule] Manually patched SandboxBattleInitializationModel.GetAllAvailableTroopTypes successfully inside OnGameStart.");
+                    }
+                    else
+                    {
+                        Logger.Log("[SubModule] SandboxBattleInitializationModel type not found in OnGameStart.");
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    Logger.Log($"[SubModule] Failed to manually patch SandboxBattleInitializationModel inside OnGameStart: {ex}");
+                }
+            }
         }
 
         public override void OnGameLoaded(Game game, object initializerObject)
