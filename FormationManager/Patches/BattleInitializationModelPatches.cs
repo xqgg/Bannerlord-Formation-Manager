@@ -19,23 +19,9 @@ namespace FormationManager.Patches
     /// custom-assigned classes here, we force the OOB UI to recognize them as available, 
     /// activating the corresponding formation cards.
     /// </summary>
-    [HarmonyPatch]
     internal static class SandboxBattleInitializationModelPatch
     {
-        public static System.Reflection.MethodBase TargetMethod()
-        {
-            // Dynamically resolve type since Sandbox.dll is a module and not directly referenced.
-            Type type = AccessTools.TypeByName("Sandbox.SandboxBattleInitializationModel");
-            if (type == null)
-            {
-                Logger.Log("SandboxBattleInitializationModel type not found. Cannot patch campaign OOB initialization.");
-                return null;
-            }
-            return AccessTools.Method(type, "GetAllAvailableTroopTypes");
-        }
-
-        [HarmonyPostfix]
-        private static void Postfix(ref List<FormationClass> __result)
+        public static void Postfix(ref List<FormationClass> __result)
         {
             if (__result == null)
                 __result = new List<FormationClass>();
@@ -81,8 +67,6 @@ namespace FormationManager.Patches
         [HarmonyPostfix]
         private static void Postfix(ref List<FormationClass> __result)
         {
-            // For custom battles, we don't have custom assignments saved by player ID, 
-            // but we can ensure it doesn't break if result is null.
             if (__result == null)
                 __result = new List<FormationClass>();
         }
