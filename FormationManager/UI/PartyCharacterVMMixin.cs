@@ -87,10 +87,10 @@ namespace FormationManager.UI
         private void Refresh()
         {
             var settings = Settings.Instance;
-            bool modEnabled = settings?.ModEnabled ?? false;
+            bool modEnabled = settings?.ModEnabled ?? true;
 
             // Badge is only shown for regular (non-hero) player-side troops when mod is on
-            IsFormationBadgeVisible = modEnabled && ViewModel != null && !ViewModel.IsMainHero;
+            IsFormationBadgeVisible = modEnabled && ViewModel != null && !ViewModel.IsMainHero && !ViewModel.IsPrisoner;
 
             if (ViewModel?.Character == null || !modEnabled)
             {

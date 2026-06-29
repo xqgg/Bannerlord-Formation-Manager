@@ -13,6 +13,8 @@ namespace FormationManager
         private static Harmony? _harmony;
         private static UIExtender? _uiExtender;
 
+        private static bool _uiExtenderInitialized;
+
         protected override void OnSubModuleLoad()
         {
             base.OnSubModuleLoad();
@@ -25,9 +27,41 @@ namespace FormationManager
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
 
-            _uiExtender = UIExtender.Create("FormationManager");
-            _uiExtender.Register(typeof(SubModule).Assembly);
-            _uiExtender.Enable();
+            if (!_uiExtenderInitialized)
+            {
+                _uiExtenderInitialized = true;
+                try
+                {
+                    _uiExtender = UIExtender.Create("FormationManager");
+                    _uiExtender.Register(typeof(SubModule).Assembly);
+                    _uiExtender.Enable();
+                }
+                catch (System.Exception ex)
+                {
+                    try
+                    {
+                        string docs = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+                        string dir = System.IO.Path.Combine(docs, "Mount and Blade II Bannerlord", "Configs");
+                        if (!System.IO.Directory.Exists(dir)) System.IO.Directory.CreateDirectory(dir);
+                        string path = System.IO.Path.Combine(dir, "FormationManager_LoadError.txt");
+                        
+                        string errorText = ex.ToString();
+                        if (ex is System.Reflection.ReflectionTypeLoadException rtle)
+                        {
+                            errorText += "\nLoader Exceptions:\n";
+                            foreach (var le in rtle.LoaderExceptions)
+                            {
+                                errorText += le.ToString() + "\n";
+                            }
+                        }
+                        System.IO.File.WriteAllText(path, errorText);
+                    }
+                    catch
+                    {
+                        // Ignore secondary writing issues
+                    }
+                }
+            }
         }
 
         protected override void OnGameStart(Game game, IGameStarter gameStarter)

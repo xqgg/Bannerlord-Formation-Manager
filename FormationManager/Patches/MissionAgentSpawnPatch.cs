@@ -27,7 +27,7 @@ namespace FormationManager.Patches
                 return;
 
             var settings = Settings.Instance;
-            if (settings == null || !settings.ModEnabled)
+            if (settings != null && !settings.ModEnabled)
                 return;
 
             if (!isPlayerSide)
