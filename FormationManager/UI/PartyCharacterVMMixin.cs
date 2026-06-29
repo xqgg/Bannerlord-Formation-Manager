@@ -73,6 +73,14 @@ namespace FormationManager.UI
             int next = current + 1;
             if (next > 7) next = -1; // wrap back to none
 
+            try
+            {
+                string docs = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+                string path = System.IO.Path.Combine(docs, "Mount and Blade II Bannerlord", "Configs", "FormationManager_ClickDebug.txt");
+                System.IO.File.WriteAllText(path, $"Cycle clicked! Troop: {character.Name}, Current Assignment: {current}, Next Assignment: {next}");
+            }
+            catch {}
+
             if (next < 0)
                 FormationAssignmentStore.ClearAssignment(character.StringId);
             else
@@ -87,10 +95,20 @@ namespace FormationManager.UI
         {
             var character = ViewModel?.Character;
             if (character == null) return;
+
+            try
+            {
+                string docs = System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments);
+                string path = System.IO.Path.Combine(docs, "Mount and Blade II Bannerlord", "Configs", "FormationManager_ClickDebug.txt");
+                System.IO.File.WriteAllText(path, $"Clear clicked! Troop: {character.Name}");
+            }
+            catch {}
+
             FormationAssignmentStore.ClearAssignment(character.StringId);
             FormationAssignmentStore.Save();
             Refresh();
         }
+
 
         // ── Internal refresh ──────────────────────────────────────────────────
 
