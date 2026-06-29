@@ -1,4 +1,3 @@
-using System;
 using Bannerlord.UIExtenderEx.Attributes;
 using Bannerlord.UIExtenderEx.ViewModels;
 using TaleWorlds.CampaignSystem.ViewModelCollection.Party;
@@ -9,46 +8,25 @@ namespace FormationManager.UI
 {
     /// <summary>
     /// Extends each troop row in the party screen with a formation assignment badge.
-    /// Click cycles through formations 1-8 then back to "none".
-    /// Right-click clears the assignment.
+    /// Properties here bind directly into the injected widget from PartyTroopTupleFormationBadgePatch.
+    /// - Click  : cycles none → F1 → F2 → … → F8 → none
+    /// - Right-click: clears assignment immediately
     /// </summary>
     [ViewModelMixin(nameof(PartyCharacterVM.RefreshValues))]
     internal sealed class PartyCharacterVMMixin : BaseViewModelMixin<PartyCharacterVM>
     {
-        // Formation labels: index 0 = "—" (none), 1-8 = formation numbers
-        private static readonly string[] Labels = { "—", "I", "II", "III", "IV", "V", "VI", "VII", "VIII" };
+        private static readonly string[] Labels = { "\u2014", "I", "II", "III", "IV", "V", "VI", "VII", "VIII" };
 
-        private string _formationLabel = "—";
-        private bool _isModEnabled;
+        private string _formationLabel = "\u2014";
+        private bool _isFormationBadgeVisible;
 
         public PartyCharacterVMMixin(PartyCharacterVM vm) : base(vm)
         {
-            RefreshFormationLabel();
+            Refresh();
         }
 
-        private void RefreshFormationLabel()
-        {
-            var settings = Settings.Instance;
-            _isModEnabled = settings?.ModEnabled ?? false;
+        // ── Bindable properties ────────────────────────────────────────────────
 
-            if (!_isModEnabled || ViewModel == null)
-            {
-                FormationLabel = "—";
-                return;
-            }
-
-            var character = ViewModel.Character;
-            if (character == null)
-            {
-                FormationLabel = "—";
-                return;
-            }
-
-            int idx = FormationAssignmentStore.GetAssignment(character.StringId);
-            FormationLabel = idx >= 0 && idx <= 7 ? Labels[idx + 1] : "—";
-        }
-
-        /// <summary>The formation badge label bound to the XML widget.</summary>
         [DataSourceProperty]
         public string FormationLabel
         {
@@ -61,16 +39,22 @@ namespace FormationManager.UI
             }
         }
 
-        /// <summary>Whether the formation badge should be visible.</summary>
         [DataSourceProperty]
         public bool IsFormationBadgeVisible
         {
-            get => _isModEnabled && ViewModel?.IsMainHero == false;
+            get => _isFormationBadgeVisible;
+            set
+            {
+                if (_isFormationBadgeVisible == value) return;
+                _isFormationBadgeVisible = value;
+                OnPropertyChanged(nameof(IsFormationBadgeVisible));
+            }
         }
 
-        /// <summary>Cycles the formation assignment forward: none → F1 → F2 → ... → F8 → none.</summary>
+        // ── Commands (void methods — bound via Command.Click in the widget XML) ──
+
         [DataSourceProperty]
-        public Action ExecuteCycleFormation => () =>
+        public void ExecuteCycleFormation()
         {
             var character = ViewModel?.Character;
             if (character == null) return;
@@ -85,23 +69,39 @@ namespace FormationManager.UI
                 FormationAssignmentStore.SetAssignment(character.StringId, next);
 
             FormationAssignmentStore.Save();
-            RefreshFormationLabel();
-        };
+            Refresh();
+        }
 
-        /// <summary>Clears the formation assignment (bound to right-click in XML).</summary>
         [DataSourceProperty]
-        public Action ExecuteClearFormation => () =>
+        public void ExecuteClearFormation()
         {
             var character = ViewModel?.Character;
             if (character == null) return;
             FormationAssignmentStore.ClearAssignment(character.StringId);
             FormationAssignmentStore.Save();
-            RefreshFormationLabel();
-        };
-
-        public override void OnRefresh()
-        {
-            RefreshFormationLabel();
+            Refresh();
         }
+
+        // ── Internal refresh ──────────────────────────────────────────────────
+
+        private void Refresh()
+        {
+            var settings = Settings.Instance;
+            bool modEnabled = settings?.ModEnabled ?? false;
+
+            // Badge is only shown for regular (non-hero) player-side troops when mod is on
+            IsFormationBadgeVisible = modEnabled && ViewModel != null && !ViewModel.IsMainHero;
+
+            if (ViewModel?.Character == null || !modEnabled)
+            {
+                FormationLabel = "\u2014";
+                return;
+            }
+
+            int idx = FormationAssignmentStore.GetAssignment(ViewModel.Character.StringId);
+            FormationLabel = (idx >= 0 && idx <= 7) ? Labels[idx + 1] : "\u2014";
+        }
+
+        public override void OnRefresh() => Refresh();
     }
 }
