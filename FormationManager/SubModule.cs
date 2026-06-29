@@ -3,8 +3,8 @@ using TaleWorlds.CampaignSystem;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
 using Bannerlord.UIExtenderEx;
+using FormationManager.Behaviors;
 using FormationManager.Data;
-using FormationManager.Patches;
 
 namespace FormationManager
 {
@@ -83,7 +83,8 @@ namespace FormationManager
         public override void OnBeforeMissionBehaviorInitialize(Mission mission)
         {
             base.OnBeforeMissionBehaviorInitialize(mission);
-            // Patch is already applied globally; no per-mission registration needed.
+            // Register our behavior on every battle mission to hook GetAgentTroopClass_Override.
+            mission.AddMissionBehavior(new FormationManagerMissionBehavior());
         }
 
         public override void OnGameEnd(Game game)
