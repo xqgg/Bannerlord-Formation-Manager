@@ -25,10 +25,10 @@ namespace FormationManager.Patches
 
         [HarmonyPatch(nameof(QueryLibrary.IsInfantry))]
         [HarmonyPostfix]
-        public static void IsInfantryPostfix(Agent agent, ref bool __result)
+        public static void IsInfantryPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 int idx = formation.Index;
@@ -38,23 +38,23 @@ namespace FormationManager.Patches
 
         [HarmonyPatch(nameof(QueryLibrary.IsInfantryWithoutBanner))]
         [HarmonyPostfix]
-        public static void IsInfantryWithoutBannerPostfix(Agent agent, ref bool __result)
+        public static void IsInfantryWithoutBannerPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 int idx = formation.Index;
-                __result = (idx == 0 || idx == 4 || idx == 5) && agent?.Banner == null;
+                __result = (idx == 0 || idx == 4 || idx == 5) && a?.Banner == null;
             }
         }
 
         [HarmonyPatch(nameof(QueryLibrary.IsRanged))]
         [HarmonyPostfix]
-        public static void IsRangedPostfix(Agent agent, ref bool __result)
+        public static void IsRangedPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 __result = (formation.Index == 1);
@@ -63,22 +63,22 @@ namespace FormationManager.Patches
 
         [HarmonyPatch(nameof(QueryLibrary.IsRangedWithoutBanner))]
         [HarmonyPostfix]
-        public static void IsRangedWithoutBannerPostfix(Agent agent, ref bool __result)
+        public static void IsRangedWithoutBannerPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
-                __result = (formation.Index == 1) && agent?.Banner == null;
+                __result = (formation.Index == 1) && a?.Banner == null;
             }
         }
 
         [HarmonyPatch(nameof(QueryLibrary.IsCavalry))]
         [HarmonyPostfix]
-        public static void IsCavalryPostfix(Agent agent, ref bool __result)
+        public static void IsCavalryPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 int idx = formation.Index;
@@ -88,23 +88,23 @@ namespace FormationManager.Patches
 
         [HarmonyPatch(nameof(QueryLibrary.IsCavalryWithoutBanner))]
         [HarmonyPostfix]
-        public static void IsCavalryWithoutBannerPostfix(Agent agent, ref bool __result)
+        public static void IsCavalryWithoutBannerPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 int idx = formation.Index;
-                __result = (idx == 2 || idx == 6 || idx == 7) && agent?.Banner == null;
+                __result = (idx == 2 || idx == 6 || idx == 7) && a?.Banner == null;
             }
         }
 
         [HarmonyPatch(nameof(QueryLibrary.IsRangedCavalry))]
         [HarmonyPostfix]
-        public static void IsRangedCavalryPostfix(Agent agent, ref bool __result)
+        public static void IsRangedCavalryPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
                 __result = (formation.Index == 3);
@@ -113,13 +113,13 @@ namespace FormationManager.Patches
 
         [HarmonyPatch(nameof(QueryLibrary.IsRangedCavalryWithoutBanner))]
         [HarmonyPostfix]
-        public static void IsRangedCavalryWithoutBannerPostfix(Agent agent, ref bool __result)
+        public static void IsRangedCavalryWithoutBannerPostfix(Agent a, ref bool __result)
         {
             if (!IsModActive()) return;
-            var formation = agent?.Formation;
+            var formation = a?.Formation;
             if (formation != null)
             {
-                __result = (formation.Index == 3) && agent?.Banner == null;
+                __result = (formation.Index == 3) && a?.Banner == null;
             }
         }
     }
