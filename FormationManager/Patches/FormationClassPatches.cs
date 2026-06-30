@@ -240,7 +240,7 @@ namespace FormationManager.Patches
                 }
             }
 
-            // 2. Force the correct classes on the cards
+            // 2. Force the correct classes on the cards and class VMs
             var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
             foreach (var item in formationsList)
             {
@@ -252,6 +252,19 @@ namespace FormationManager.Patches
                 {
                     Logger.Log($"[OrderOfBattleVMInitializePatch] Forcing formation {idx} card class to {targetClass}");
                     item.RefreshFormation(item.Formation, targetClass, true);
+
+                    // Manually enforce the class VM backing property to match targetClass.
+                    // This guarantees that the UI slider and backing class match exactly,
+                    // bypassing any binding update glitches in the base game's selector event loop.
+                    var targetNativeClass = MapToNativeClass(targetClass);
+                    if (item.Classes != null && item.Classes.Count > 0)
+                    {
+                        item.Classes[0].Class = targetNativeClass;
+                        if (item.Classes.Count > 1)
+                        {
+                            item.Classes[1].Class = FormationClass.Unset;
+                        }
+                    }
                 }
             }
 
@@ -276,6 +289,23 @@ namespace FormationManager.Patches
             __instance.OnUnitDeployed();
 
             Logger.Log("[OrderOfBattleVMInitializePatch] Postfix completed successfully.");
+        }
+
+        private static FormationClass MapToNativeClass(DeploymentFormationClass dfc)
+        {
+            switch (dfc)
+            {
+                case DeploymentFormationClass.Infantry:
+                    return FormationClass.Infantry;
+                case DeploymentFormationClass.Ranged:
+                    return FormationClass.Ranged;
+                case DeploymentFormationClass.Cavalry:
+                    return FormationClass.Cavalry;
+                case DeploymentFormationClass.HorseArcher:
+                    return FormationClass.HorseArcher;
+                default:
+                    return FormationClass.Unset;
+            }
         }
     }
 
