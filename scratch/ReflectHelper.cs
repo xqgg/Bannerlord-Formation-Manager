@@ -10,34 +10,29 @@ public class ReflectHelper
         {
             var assembly = Assembly.LoadFrom(@"E:\SteamLibrary\steamapps\common\Mount & Blade II Bannerlord\bin\Win64_Shipping_Client\TaleWorlds.MountAndBlade.ViewModelCollection.dll");
             var itemType = assembly.GetType("TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle.OrderOfBattleFormationItemVM");
-            var vmType = assembly.GetType("TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle.OrderOfBattleVM");
 
-            Console.WriteLine("Reflecting VM methods...");
-            foreach (var method in vmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+            Console.WriteLine("Scanning all assembly methods calling RefreshFormation...");
+            foreach (var type in assembly.GetTypes())
             {
-                var body = method.GetMethodBody();
-                if (body == null) continue;
+                foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                {
+                    var body = method.GetMethodBody();
+                    if (body == null) continue;
 
-                // We can read IL bytes and search for calls
-                byte[] il = body.GetILAsByteArray();
-                // We want to find any Call or Callvirt to a method named RefreshFormation
-                // Let's print out the method body IL metadata to find calls
-                // Or simply search for the method reference in the assembly module
-                // Actually, let's inspect the instructions using a basic IL reader or by checking the method names referenced
+                    byte[] il = body.GetILAsByteArray();
+                    // Just scan the IL bytes or metadata to find if this method references RefreshFormation.
+                    // A simple way is to check the method names or just print out methods that might be related.
+                }
             }
 
-            // Let's look at the methods in OrderOfBattleVM that reference OrderOfBattleFormationItemVM
-            foreach (var method in vmType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+            // Let's print out all method names in OrderOfBattleHeroItemVM
+            var heroType = assembly.GetType("TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle.OrderOfBattleHeroItemVM");
+            Console.WriteLine("\nMethods in OrderOfBattleHeroItemVM:");
+            foreach (var m in heroType.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
             {
-                var body = method.GetMethodBody();
-                if (body == null) continue;
-                
-                // Let's print the local variables and their types
-                var locals = body.LocalVariables;
-                bool referencesItem = locals.Any(l => l.LocalType == itemType);
-                if (referencesItem)
+                if (m.DeclaringType == heroType)
                 {
-                    Console.WriteLine($"Method referencing OrderOfBattleFormationItemVM: {method.Name}");
+                    Console.WriteLine($"- {m.Name}");
                 }
             }
         }

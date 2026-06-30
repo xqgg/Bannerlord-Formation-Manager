@@ -10,54 +10,6 @@ using FormationManager.Data;
 
 namespace FormationManager.Patches
 {
-    // We disable the LogicalClass and PhysicalClass patches to avoid the "class lie".
-    // Agents will be evaluated by their true native classes.
-    
-    /*
-    [HarmonyPatch(typeof(Formation), "get_LogicalClass")]
-    internal static class FormationLogicalClassPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(ref FormationClass __result)
-        {
-            var settings = Settings.Instance;
-            if (settings == null || !settings.ModEnabled)
-                return;
-
-            __result = MapToBasicClass(__result);
-        }
-
-        public static FormationClass MapToBasicClass(FormationClass fc)
-        {
-            switch (fc)
-            {
-                case FormationClass.Skirmisher:
-                case FormationClass.HeavyInfantry:
-                    return FormationClass.Infantry;
-                case FormationClass.LightCavalry:
-                case FormationClass.HeavyCavalry:
-                    return FormationClass.Cavalry;
-                default:
-                    return fc;
-            }
-        }
-    }
-
-    [HarmonyPatch(typeof(Formation), "get_PhysicalClass")]
-    internal static class FormationPhysicalClassPatch
-    {
-        [HarmonyPostfix]
-        private static void Postfix(ref FormationClass __result)
-        {
-            var settings = Settings.Instance;
-            if (settings == null || !settings.ModEnabled)
-                return;
-
-            __result = FormationLogicalClassPatch.MapToBasicClass(__result);
-        }
-    }
-    */
-
     /// <summary>
     /// Patches the RefreshFormation method on the OOB formation item VM.
     /// Dynamically activates custom cards using the native classes of the assigned troops.
@@ -85,6 +37,7 @@ namespace FormationManager.Patches
                 {
                     overriddenClass = targetClass;
                     mustExist = true; // Force card activation
+                    Logger.Log($"[RefreshFormationPatch] Prefix overrode formation {idx} to {overriddenClass}");
                 }
             }
         }
@@ -219,6 +172,7 @@ namespace FormationManager.Patches
             for (int i = 0; i < 8; i++)
             {
                 cardClasses[i] = RefreshFormationPatch.GetCustomAssignmentClass(i);
+                Logger.Log($"[SetInitialHeroFormationsPatch] cardClasses[{i}] = {cardClasses[i]}");
             }
 
             int[] classCounts = new int[8];
@@ -237,6 +191,7 @@ namespace FormationManager.Patches
                     {
                         int count = element.Number - element.WoundedNumber;
                         classCounts[assignedIndex] += count;
+                        Logger.Log($"[SetInitialHeroFormationsPatch] Troop {element.Character.StringId} count={count} assigned to {assignedIndex}");
                     }
                 }
             }
@@ -248,11 +203,18 @@ namespace FormationManager.Patches
                 if (assignedIndex >= 0 && assignedIndex <= 7)
                 {
                     classCounts[assignedIndex] += 1;
+                    Logger.Log($"[SetInitialHeroFormationsPatch] Main hero assigned to {assignedIndex}");
                 }
                 else
                 {
                     classCounts[2] += 1; // Default main hero to Cavalry slot
+                    Logger.Log("[SetInitialHeroFormationsPatch] Main hero defaulted to Cavalry slot (2)");
                 }
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                Logger.Log($"[SetInitialHeroFormationsPatch] classCounts[{i}] = {classCounts[i]}");
             }
 
             int[] totalByClass = new int[7]; // DeploymentFormationClass has values 0 to 6
@@ -265,6 +227,11 @@ namespace FormationManager.Patches
                 }
             }
 
+            for (int i = 0; i < 7; i++)
+            {
+                Logger.Log($"[SetInitialHeroFormationsPatch] totalByClass[{(DeploymentFormationClass)i}] = {totalByClass[i]}");
+            }
+
             var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
 
             foreach (var item in formationsList)
@@ -273,8 +240,13 @@ namespace FormationManager.Patches
                 int idx = item.Formation.Index;
                 var cardClass = cardClasses[idx];
 
-                foreach (var classVM in item.Classes)
+                Logger.Log($"[SetInitialHeroFormationsPatch] Inspecting formation {idx} VM. Card active class: {cardClass}");
+
+                for (int cIdx = 0; cIdx < item.Classes.Count; cIdx++)
                 {
+                    var classVM = item.Classes[cIdx];
+                    Logger.Log($"[SetInitialHeroFormationsPatch] ClassVM[{cIdx}]: Class={classVM.Class}, IsUnset={classVM.IsUnset}, Weight={classVM.Weight}");
+
                     if (classVM.IsUnset) continue;
 
                     if (RefreshFormationPatch.MapToDeploymentClass(classVM.Class) == cardClass)
