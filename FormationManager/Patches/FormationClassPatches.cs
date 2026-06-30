@@ -94,6 +94,39 @@ namespace FormationManager.Patches
             }
         }
 
+        [HarmonyPostfix]
+        private static void Postfix(OrderOfBattleFormationItemVM __instance, Formation formation)
+        {
+            var settings = Settings.Instance;
+            if (settings == null || !settings.ModEnabled)
+                return;
+
+            if (formation == null)
+                return;
+
+            int idx = formation.Index;
+            var selector = __instance.FormationClassSelector;
+            if (selector == null)
+            {
+                Logger.Log($"[RefreshFormationPatch] Postfix: FormationClassSelector is null for formation {idx}!");
+                return;
+            }
+
+            var selectedItem = selector.SelectedItem;
+            var selectedClass = selectedItem != null ? selectedItem.FormationClass.ToString() : "null";
+            Logger.Log($"[RefreshFormationPatch] Postfix for formation {idx}: SelectedIndex={selector.SelectedIndex}, SelectedItem.FormationClass={selectedClass}");
+
+            var itemsList = "";
+            if (selector.ItemList != null)
+            {
+                foreach (var item in selector.ItemList)
+                {
+                    itemsList += $"{item.FormationClass} (CanBeSelected={item.CanBeSelected}), ";
+                }
+            }
+            Logger.Log($"[RefreshFormationPatch] Postfix for formation {idx} ItemList: {itemsList}");
+        }
+
         private static bool HasTroopsAssigned(int formationIndex)
         {
             var mainParty = MobileParty.MainParty;
