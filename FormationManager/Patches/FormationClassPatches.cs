@@ -72,14 +72,14 @@ namespace FormationManager.Patches
     /// the main hero or basic vanilla classes) are seen as empty and remain inactive (unset).
     /// 
     /// By prefixing this call and forcing cards with player custom assignments to activate
-    /// with their target basic classes (Infantry/Cavalry/etc.) and setting isNew = true,
+    /// with their target basic classes (Infantry/Cavalry/etc.) and setting mustExist = true,
     /// we force the OOB deployment screen to show these slots as active cards from the start.
     /// </summary>
     [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshFormation", new Type[] { typeof(Formation), typeof(DeploymentFormationClass), typeof(bool) })]
     internal static class RefreshFormationPatch
     {
         [HarmonyPrefix]
-        private static void Prefix(OrderOfBattleFormationItemVM __instance, Formation formation, ref DeploymentFormationClass formationClass, ref bool isNew)
+        private static void Prefix(OrderOfBattleFormationItemVM __instance, Formation formation, ref DeploymentFormationClass overriddenClass, ref bool mustExist)
         {
             var settings = Settings.Instance;
             if (settings == null || !settings.ModEnabled)
@@ -94,8 +94,8 @@ namespace FormationManager.Patches
                 DeploymentFormationClass targetClass = GetCustomAssignmentClass(idx);
                 if (targetClass != DeploymentFormationClass.Unset)
                 {
-                    formationClass = targetClass;
-                    isNew = true; // Force card activation
+                    overriddenClass = targetClass;
+                    mustExist = true; // Force card activation
                 }
             }
         }
