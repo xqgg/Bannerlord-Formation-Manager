@@ -59,6 +59,10 @@
       <HintPath>$(BannerlordGameBin)\TaleWorlds.MountAndBlade.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="TaleWorlds.MountAndBlade.ViewModelCollection">
+      <HintPath>$(BannerlordGameBin)\TaleWorlds.MountAndBlade.ViewModelCollection.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="TaleWorlds.ObjectSystem">
       <HintPath>$(BannerlordGameBin)\TaleWorlds.ObjectSystem.dll</HintPath>
       <Private>False</Private>

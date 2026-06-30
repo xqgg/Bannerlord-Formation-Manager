@@ -2,6 +2,9 @@ using HarmonyLib;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
 using TaleWorlds.CampaignSystem;
+using TaleWorlds.CampaignSystem.Party;
+using TaleWorlds.MountAndBlade.ViewModelCollection.OrderOfBattle;
+using FormationManager.Data;
 
 namespace FormationManager.Patches
 {
@@ -57,6 +60,80 @@ namespace FormationManager.Patches
                 return;
 
             __result = FormationLogicalClassPatch.MapToBasicClass(__result);
+        }
+    }
+
+    /// <summary>
+    /// Patches the RefreshFormation method on the OOB formation item VM.
+    /// 
+    /// When the OOB screen initializes, it checks whether a card index contains units.
+    /// Since the OOB distribution logic hasn't run yet, all cards (except those containing
+    /// the main hero or basic vanilla classes) are seen as empty and remain inactive (unset).
+    /// 
+    /// By prefixing this call and forcing cards with player custom assignments to activate
+    /// with their target basic classes (Infantry/Cavalry/etc.) and setting isNew = true,
+    /// we force the OOB deployment screen to show these slots as active cards from the start.
+    /// </summary>
+    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshFormation")]
+    internal static class RefreshFormationPatch
+    {
+        [HarmonyPrefix]
+        private static void Prefix(OrderOfBattleFormationItemVM __instance, Formation formation, ref DeploymentFormationClass formationClass, ref bool isNew)
+        {
+            var settings = Settings.Instance;
+            if (settings == null || !settings.ModEnabled)
+                return;
+
+            if (formation == null)
+                return;
+
+            int idx = formation.Index;
+            if (HasTroopsAssigned(idx))
+            {
+                DeploymentFormationClass targetClass = GetCustomAssignmentClass(idx);
+                if (targetClass != DeploymentFormationClass.Unset)
+                {
+                    formationClass = targetClass;
+                    isNew = true; // Force card activation
+                }
+            }
+        }
+
+        private static bool HasTroopsAssigned(int formationIndex)
+        {
+            var mainParty = MobileParty.MainParty;
+            if (mainParty?.MemberRoster == null)
+                return false;
+
+            for (int i = 0; i < mainParty.MemberRoster.Count; i++)
+            {
+                var element = mainParty.MemberRoster.GetElementCopyAtIndex(i);
+                if (element.Character == null)
+                    continue;
+
+                if (element.Number <= element.WoundedNumber)
+                    continue;
+
+                int assignedIndex = FormationAssignmentStore.GetAssignment(element.Character.StringId);
+                if (assignedIndex == formationIndex)
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static DeploymentFormationClass GetCustomAssignmentClass(int formationIndex)
+        {
+            if (formationIndex == 0 || formationIndex == 4 || formationIndex == 5)
+                return DeploymentFormationClass.Infantry;
+            if (formationIndex == 1)
+                return DeploymentFormationClass.Ranged;
+            if (formationIndex == 2 || formationIndex == 6 || formationIndex == 7)
+                return DeploymentFormationClass.Cavalry;
+            if (formationIndex == 3)
+                return DeploymentFormationClass.HorseArcher;
+
+            return DeploymentFormationClass.Unset;
         }
     }
 }
