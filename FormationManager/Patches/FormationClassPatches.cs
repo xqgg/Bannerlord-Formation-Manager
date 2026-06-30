@@ -1,3 +1,4 @@
+using System;
 using HarmonyLib;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
@@ -74,7 +75,7 @@ namespace FormationManager.Patches
     /// with their target basic classes (Infantry/Cavalry/etc.) and setting isNew = true,
     /// we force the OOB deployment screen to show these slots as active cards from the start.
     /// </summary>
-    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshFormation")]
+    [HarmonyPatch(typeof(OrderOfBattleFormationItemVM), "RefreshFormation", new Type[] { typeof(Formation), typeof(DeploymentFormationClass), typeof(bool) })]
     internal static class RefreshFormationPatch
     {
         [HarmonyPrefix]
