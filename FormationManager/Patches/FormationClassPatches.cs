@@ -10,6 +10,9 @@ using FormationManager.Data;
 
 namespace FormationManager.Patches
 {
+    // We disable the LogicalClass and PhysicalClass patches to avoid the "class lie".
+    // Agents will be evaluated by their true native classes.
+
     /// <summary>
     /// Patches the RefreshFormation method on the OOB formation item VM.
     /// Dynamically activates custom cards using the native classes of the assigned troops.
@@ -172,7 +175,6 @@ namespace FormationManager.Patches
             for (int i = 0; i < 8; i++)
             {
                 cardClasses[i] = RefreshFormationPatch.GetCustomAssignmentClass(i);
-                Logger.Log($"[SetInitialHeroFormationsPatch] cardClasses[{i}] = {cardClasses[i]}");
             }
 
             int[] classCounts = new int[8];
@@ -191,7 +193,6 @@ namespace FormationManager.Patches
                     {
                         int count = element.Number - element.WoundedNumber;
                         classCounts[assignedIndex] += count;
-                        Logger.Log($"[SetInitialHeroFormationsPatch] Troop {element.Character.StringId} count={count} assigned to {assignedIndex}");
                     }
                 }
             }
@@ -203,18 +204,11 @@ namespace FormationManager.Patches
                 if (assignedIndex >= 0 && assignedIndex <= 7)
                 {
                     classCounts[assignedIndex] += 1;
-                    Logger.Log($"[SetInitialHeroFormationsPatch] Main hero assigned to {assignedIndex}");
                 }
                 else
                 {
                     classCounts[2] += 1; // Default main hero to Cavalry slot
-                    Logger.Log("[SetInitialHeroFormationsPatch] Main hero defaulted to Cavalry slot (2)");
                 }
-            }
-
-            for (int i = 0; i < 8; i++)
-            {
-                Logger.Log($"[SetInitialHeroFormationsPatch] classCounts[{i}] = {classCounts[i]}");
             }
 
             int[] totalByClass = new int[7]; // DeploymentFormationClass has values 0 to 6
@@ -227,11 +221,6 @@ namespace FormationManager.Patches
                 }
             }
 
-            for (int i = 0; i < 7; i++)
-            {
-                Logger.Log($"[SetInitialHeroFormationsPatch] totalByClass[{(DeploymentFormationClass)i}] = {totalByClass[i]}");
-            }
-
             var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
 
             foreach (var item in formationsList)
@@ -240,13 +229,8 @@ namespace FormationManager.Patches
                 int idx = item.Formation.Index;
                 var cardClass = cardClasses[idx];
 
-                Logger.Log($"[SetInitialHeroFormationsPatch] Inspecting formation {idx} VM. Card active class: {cardClass}");
-
-                for (int cIdx = 0; cIdx < item.Classes.Count; cIdx++)
+                foreach (var classVM in item.Classes)
                 {
-                    var classVM = item.Classes[cIdx];
-                    Logger.Log($"[SetInitialHeroFormationsPatch] ClassVM[{cIdx}]: Class={classVM.Class}, IsUnset={classVM.IsUnset}, Weight={classVM.Weight}");
-
                     if (classVM.IsUnset) continue;
 
                     if (RefreshFormationPatch.MapToDeploymentClass(classVM.Class) == cardClass)
@@ -262,6 +246,92 @@ namespace FormationManager.Patches
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Patches the Initialize method on the OrderOfBattleVM.
+    /// Run at the very end of VM initialization to ensure that:
+    /// 1. Preview agents are moved to their correct assigned formations (since the engine's internal setup resets them).
+    /// 2. The dropdown selector and card classes list are forced to sync with the target classes.
+    /// 3. Weights and counts are updated to reflect this final layout.
+    /// </summary>
+    [HarmonyPatch(typeof(OrderOfBattleVM), "Initialize")]
+    internal static class OrderOfBattleVMInitializePatch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(OrderOfBattleVM __instance)
+        {
+            var settings = Settings.Instance;
+            if (settings == null || !settings.ModEnabled)
+                return;
+
+            Logger.Log("[OrderOfBattleVMInitializePatch] Postfix: Enforcing custom assignments on OOB cards and preview agents...");
+
+            var mission = Mission.Current;
+            if (mission == null)
+            {
+                Logger.Log("[OrderOfBattleVMInitializePatch] Mission is null!");
+                return;
+            }
+
+            var team = mission.PlayerTeam;
+            if (team == null)
+            {
+                Logger.Log("[OrderOfBattleVMInitializePatch] PlayerTeam is null!");
+                return;
+            }
+
+            // 1. Move preview agents to their assigned formations
+            foreach (var agent in team.ActiveAgents)
+            {
+                if (agent.Character == null) continue;
+
+                int assignedIndex = FormationAssignmentStore.GetAssignment(agent.Character.StringId);
+                if (assignedIndex >= 0 && assignedIndex <= 7)
+                {
+                    var targetFormation = team.GetFormation((FormationClass)assignedIndex);
+                    if (targetFormation != null && agent.Formation != targetFormation)
+                    {
+                        agent.Formation = targetFormation;
+                        Logger.Log($"[OrderOfBattleVMInitializePatch] Moved preview agent {agent.Character.StringId} to formation {assignedIndex} (Name: {agent.Character.Name})");
+                    }
+                }
+            }
+
+            // 2. Force the correct classes on the cards
+            var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
+            foreach (var item in formationsList)
+            {
+                if (item.Formation == null) continue;
+                int idx = item.Formation.Index;
+
+                var targetClass = RefreshFormationPatch.GetCustomAssignmentClass(idx);
+                if (targetClass != DeploymentFormationClass.Unset)
+                {
+                    Logger.Log($"[OrderOfBattleVMInitializePatch] Forcing formation {idx} card class to {targetClass}");
+                    item.RefreshFormation(item.Formation, targetClass, true);
+                }
+            }
+
+            // 3. Call OnSizeChanged on all cards to update counts
+            foreach (var item in formationsList)
+            {
+                item.OnSizeChanged();
+            }
+
+            // 4. Refresh weights and UI via reflection
+            try
+            {
+                AccessTools.Method(typeof(OrderOfBattleVM), "RefreshWeights").Invoke(__instance, null);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"[OrderOfBattleVMInitializePatch] Failed to call RefreshWeights: {ex}");
+            }
+            __instance.OnUnitDeployed();
+
+            Logger.Log("[OrderOfBattleVMInitializePatch] Postfix completed successfully.");
         }
     }
 }
