@@ -344,8 +344,13 @@ namespace FormationManager.Patches
                 int idx = item.Formation.Index;
                 var cardClass = cardClasses[idx];
 
-                foreach (var classVM in item.Classes)
+                Logger.Log($"[WeightDistributor] Inspecting formation {idx} (CardClass={cardClass}, classCounts={classCounts[idx]})");
+
+                for (int cIdx = 0; cIdx < item.Classes.Count; cIdx++)
                 {
+                    var classVM = item.Classes[cIdx];
+                    Logger.Log($"[WeightDistributor]   - classVM[{cIdx}]: Class={classVM.Class}, IsUnset={classVM.IsUnset}, Weight={classVM.Weight}");
+
                     if (classVM.IsUnset) continue;
 
                     if (RefreshFormationPatch.MapToDeploymentClass(classVM.Class) == cardClass)
