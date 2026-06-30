@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using HarmonyLib;
 using TaleWorlds.Core;
 using TaleWorlds.MountAndBlade;
@@ -69,27 +70,18 @@ namespace FormationManager.Patches
                 return;
 
             if (formation == null)
-            {
-                Logger.Log("[RefreshFormationPatch] Prefix: formation is null!");
                 return;
-            }
 
             int idx = formation.Index;
-            Logger.Log($"[RefreshFormationPatch] Prefix called for formation {idx}. Original overriddenClass={overriddenClass}, mustExist={mustExist}");
-
             bool hasTroops = HasTroopsAssigned(idx);
-            Logger.Log($"[RefreshFormationPatch] HasTroopsAssigned({idx}) returned {hasTroops}");
 
             if (hasTroops)
             {
                 DeploymentFormationClass targetClass = GetCustomAssignmentClass(idx);
-                Logger.Log($"[RefreshFormationPatch] Target class for formation {idx} is {targetClass}");
-
                 if (targetClass != DeploymentFormationClass.Unset)
                 {
                     overriddenClass = targetClass;
-                    mustExist = true;
-                    Logger.Log($"[RefreshFormationPatch] Overrode formation {idx}: overriddenClass={overriddenClass}, mustExist={mustExist}");
+                    mustExist = true; // Force card activation
                 }
             }
         }
@@ -107,42 +99,19 @@ namespace FormationManager.Patches
             int idx = formation.Index;
             var selector = __instance.FormationClassSelector;
             if (selector == null)
-            {
-                Logger.Log($"[RefreshFormationPatch] Postfix: FormationClassSelector is null for formation {idx}!");
                 return;
-            }
 
             var selectedItem = selector.SelectedItem;
             var selectedClass = selectedItem != null ? selectedItem.FormationClass.ToString() : "null";
             Logger.Log($"[RefreshFormationPatch] Postfix for formation {idx}: SelectedIndex={selector.SelectedIndex}, SelectedItem.FormationClass={selectedClass}");
-
-            var itemsList = "";
-            if (selector.ItemList != null)
-            {
-                foreach (var item in selector.ItemList)
-                {
-                    itemsList += $"{item.FormationClass} (CanBeSelected={item.CanBeSelected}), ";
-                }
-            }
-            Logger.Log($"[RefreshFormationPatch] Postfix for formation {idx} ItemList: {itemsList}");
         }
 
         private static bool HasTroopsAssigned(int formationIndex)
         {
             var mainParty = MobileParty.MainParty;
-            if (mainParty == null)
-            {
-                Logger.Log("[RefreshFormationPatch] MobileParty.MainParty is null!");
+            if (mainParty?.MemberRoster == null)
                 return false;
-            }
 
-            if (mainParty.MemberRoster == null)
-            {
-                Logger.Log("[RefreshFormationPatch] MobileParty.MainParty.MemberRoster is null!");
-                return false;
-            }
-
-            Logger.Log($"[RefreshFormationPatch] Scanning MemberRoster. Size={mainParty.MemberRoster.Count}");
             for (int i = 0; i < mainParty.MemberRoster.Count; i++)
             {
                 var element = mainParty.MemberRoster.GetElementCopyAtIndex(i);
@@ -152,7 +121,6 @@ namespace FormationManager.Patches
                 int assignedIndex = FormationAssignmentStore.GetAssignment(element.Character.StringId);
                 if (assignedIndex == formationIndex)
                 {
-                    Logger.Log($"[RefreshFormationPatch] Found assigned troop: {element.Character.StringId} (Index={assignedIndex}, Count={element.Number}, Wounded={element.WoundedNumber})");
                     if (element.Number > element.WoundedNumber)
                     {
                         return true;
@@ -175,6 +143,127 @@ namespace FormationManager.Patches
                 return DeploymentFormationClass.HorseArcher;
 
             return DeploymentFormationClass.Unset;
+        }
+    }
+
+    /// <summary>
+    /// Patches the SetInitialHeroFormations method on the OOB VM.
+    /// 
+    /// By default, newly activated cards will have 0% weight, so 100% of the class's troops
+    /// will default to the first active card of that class.
+    /// 
+    /// By intercepting after hero formations are configured, we calculate the exact ratio
+    /// of troops assigned to each card based on the player's party roster configuration,
+    /// and set the corresponding class VM weights programmatically. This ensures the OOB
+    /// engine distributes the correct number of troops to each card.
+    /// </summary>
+    [HarmonyPatch(typeof(OrderOfBattleVM), "SetInitialHeroFormations")]
+    internal static class SetInitialHeroFormationsPatch
+    {
+        [HarmonyPostfix]
+        private static void Postfix(OrderOfBattleVM __instance)
+        {
+            var settings = Settings.Instance;
+            if (settings == null || !settings.ModEnabled)
+                return;
+
+            Logger.Log("[SetInitialHeroFormationsPatch] Postfix: Distributing card weights based on custom assignments...");
+
+            int[] infantryCounts = new int[8];
+            int[] rangedCounts = new int[8];
+            int[] cavalryCounts = new int[8];
+            int[] horseArcherCounts = new int[8];
+
+            var mainParty = MobileParty.MainParty;
+            if (mainParty?.MemberRoster != null)
+            {
+                for (int i = 0; i < mainParty.MemberRoster.Count; i++)
+                {
+                    var element = mainParty.MemberRoster.GetElementCopyAtIndex(i);
+                    if (element.Character == null) continue;
+                    if (element.Number <= element.WoundedNumber) continue;
+
+                    int assignedIndex = FormationAssignmentStore.GetAssignment(element.Character.StringId);
+                    if (assignedIndex >= 0 && assignedIndex <= 7)
+                    {
+                        int count = element.Number - element.WoundedNumber;
+                        if (assignedIndex == 0 || assignedIndex == 4 || assignedIndex == 5)
+                            infantryCounts[assignedIndex] += count;
+                        else if (assignedIndex == 1)
+                            rangedCounts[assignedIndex] += count;
+                        else if (assignedIndex == 2 || assignedIndex == 6 || assignedIndex == 7)
+                            cavalryCounts[assignedIndex] += count;
+                        else if (assignedIndex == 3)
+                            horseArcherCounts[assignedIndex] += count;
+                    }
+                }
+            }
+
+            var mainHero = Hero.MainHero;
+            if (mainHero != null)
+            {
+                int assignedIndex = FormationAssignmentStore.GetAssignment(mainHero.CharacterObject.StringId);
+                if (assignedIndex >= 0 && assignedIndex <= 7)
+                {
+                    if (assignedIndex == 0 || assignedIndex == 4 || assignedIndex == 5)
+                        infantryCounts[assignedIndex] += 1;
+                    else if (assignedIndex == 1)
+                        rangedCounts[assignedIndex] += 1;
+                    else if (assignedIndex == 2 || assignedIndex == 6 || assignedIndex == 7)
+                        cavalryCounts[assignedIndex] += 1;
+                    else if (assignedIndex == 3)
+                        horseArcherCounts[assignedIndex] += 1;
+                }
+                else
+                {
+                    cavalryCounts[2] += 1; // Default main hero to Cavalry slot
+                }
+            }
+
+            int totalInfantry = infantryCounts.Sum();
+            int totalRanged = rangedCounts.Sum();
+            int totalCavalry = cavalryCounts.Sum();
+            int totalHorseArcher = horseArcherCounts.Sum();
+
+            Logger.Log($"[SetInitialHeroFormationsPatch] Calculated totals: Infantry={totalInfantry}, Ranged={totalRanged}, Cavalry={totalCavalry}, HorseArcher={totalHorseArcher}");
+
+            var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
+
+            foreach (var item in formationsList)
+            {
+                if (item.Formation == null) continue;
+                int idx = item.Formation.Index;
+
+                foreach (var classVM in item.Classes)
+                {
+                    if (classVM.IsUnset) continue;
+
+                    int targetWeight = 0;
+                    if (classVM.Class == FormationClass.Infantry)
+                    {
+                        if (totalInfantry > 0)
+                            targetWeight = (int)Math.Round((double)infantryCounts[idx] / totalInfantry * 100);
+                    }
+                    else if (classVM.Class == FormationClass.Ranged)
+                    {
+                        if (totalRanged > 0)
+                            targetWeight = (int)Math.Round((double)rangedCounts[idx] / totalRanged * 100);
+                    }
+                    else if (classVM.Class == FormationClass.Cavalry)
+                    {
+                        if (totalCavalry > 0)
+                            targetWeight = (int)Math.Round((double)cavalryCounts[idx] / totalCavalry * 100);
+                    }
+                    else if (classVM.Class == FormationClass.HorseArcher)
+                    {
+                        if (totalHorseArcher > 0)
+                            targetWeight = (int)Math.Round((double)horseArcherCounts[idx] / totalHorseArcher * 100);
+                    }
+
+                    classVM.Weight = targetWeight;
+                    Logger.Log($"[SetInitialHeroFormationsPatch] Set formation {idx} class {classVM.Class} weight to {targetWeight}%");
+                }
+            }
         }
     }
 }
