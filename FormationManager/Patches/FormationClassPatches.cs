@@ -27,9 +27,6 @@ namespace FormationManager.Patches
             if (settings == null || !settings.ModEnabled)
                 return;
 
-            if (Campaign.Current == null)
-                return;
-
             __result = MapToBasicClass(__result);
         }
 
@@ -57,9 +54,6 @@ namespace FormationManager.Patches
         {
             var settings = Settings.Instance;
             if (settings == null || !settings.ModEnabled)
-                return;
-
-            if (Campaign.Current == null)
                 return;
 
             __result = FormationLogicalClassPatch.MapToBasicClass(__result);
