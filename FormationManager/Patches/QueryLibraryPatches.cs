@@ -5,17 +5,9 @@ namespace FormationManager.Patches
 {
     /// <summary>
     /// Patches TaleWorlds.MountAndBlade.QueryLibrary methods.
-    /// 
-    /// By default, Bannerlord's QueryLibrary classifies agents (e.g. IsCavalry, IsInfantry)
-    /// strictly by their physical characteristics (like having a mount or a ranged weapon).
-    /// Since the user assigns foot troops to cavalry/horse-archer slots, QueryLibrary would
-    /// classify them as Infantry/Ranged, causing OOB card class counts to show 0.
-    /// 
-    /// By overriding these queries to check the agent's actual assigned Formation Index (0-7),
-    /// we ensure that foot troops assigned to cavalry/horse-archer cards are counted correctly 
-    /// in the OOB UI class counts.
+    /// Disabled: HarmonyPatch attribute commented out to let agents classify naturally by their true types.
     /// </summary>
-    [HarmonyPatch(typeof(QueryLibrary))]
+    // [HarmonyPatch(typeof(QueryLibrary))]
     public static class QueryLibraryPatches
     {
         private static bool IsModActive()
@@ -23,104 +15,10 @@ namespace FormationManager.Patches
             return Settings.Instance != null && Settings.Instance.ModEnabled;
         }
 
-        [HarmonyPatch(nameof(QueryLibrary.IsInfantry))]
+        // [HarmonyPatch(nameof(QueryLibrary.IsInfantry))]
         [HarmonyPostfix]
         public static void IsInfantryPostfix(Agent a, ref bool __result)
         {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                int idx = formation.Index;
-                __result = (idx == 0 || idx == 4 || idx == 5);
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsInfantryWithoutBanner))]
-        [HarmonyPostfix]
-        public static void IsInfantryWithoutBannerPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                int idx = formation.Index;
-                __result = (idx == 0 || idx == 4 || idx == 5) && a?.Banner == null;
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsRanged))]
-        [HarmonyPostfix]
-        public static void IsRangedPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                __result = (formation.Index == 1);
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsRangedWithoutBanner))]
-        [HarmonyPostfix]
-        public static void IsRangedWithoutBannerPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                __result = (formation.Index == 1) && a?.Banner == null;
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsCavalry))]
-        [HarmonyPostfix]
-        public static void IsCavalryPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                int idx = formation.Index;
-                __result = (idx == 2 || idx == 6 || idx == 7);
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsCavalryWithoutBanner))]
-        [HarmonyPostfix]
-        public static void IsCavalryWithoutBannerPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                int idx = formation.Index;
-                __result = (idx == 2 || idx == 6 || idx == 7) && a?.Banner == null;
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsRangedCavalry))]
-        [HarmonyPostfix]
-        public static void IsRangedCavalryPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                __result = (formation.Index == 3);
-            }
-        }
-
-        [HarmonyPatch(nameof(QueryLibrary.IsRangedCavalryWithoutBanner))]
-        [HarmonyPostfix]
-        public static void IsRangedCavalryWithoutBannerPostfix(Agent a, ref bool __result)
-        {
-            if (!IsModActive()) return;
-            var formation = a?.Formation;
-            if (formation != null)
-            {
-                __result = (formation.Index == 3) && a?.Banner == null;
-            }
         }
     }
 }
