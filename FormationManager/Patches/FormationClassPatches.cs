@@ -93,6 +93,8 @@ namespace FormationManager.Patches
         public static DeploymentFormationClass GetCustomAssignmentClass(int formationIndex)
         {
             var mainParty = MobileParty.MainParty;
+            bool hasCustomTroops = false;
+
             if (mainParty?.MemberRoster != null)
             {
                 for (int i = 0; i < mainParty.MemberRoster.Count; i++)
@@ -107,6 +109,10 @@ namespace FormationManager.Patches
                         var nativeClass = element.Character.DefaultFormationClass;
                         return MapToDeploymentClass(nativeClass);
                     }
+                    if (assignedIndex >= 0)
+                    {
+                        hasCustomTroops = true;
+                    }
                 }
             }
 
@@ -118,9 +124,19 @@ namespace FormationManager.Patches
                 {
                     return MapToDeploymentClass(mainHero.CharacterObject.DefaultFormationClass);
                 }
+                if (assignedIndex >= 0)
+                {
+                    hasCustomTroops = true;
+                }
             }
 
-            // Fallback to default OOB slot classes if no custom assignment
+            // If the player has configured custom assignments, any slot that does NOT have custom assigned troops should be Unset.
+            if (hasCustomTroops)
+            {
+                return DeploymentFormationClass.Unset;
+            }
+
+            // Fallback to default OOB slot classes ONLY if there are no custom assignments in the entire party (vanilla behavior)
             if (formationIndex == 0 || formationIndex == 4 || formationIndex == 5)
                 return DeploymentFormationClass.Infantry;
             if (formationIndex == 1)
@@ -169,83 +185,8 @@ namespace FormationManager.Patches
             if (settings == null || !settings.ModEnabled)
                 return;
 
-            Logger.Log("[SetInitialHeroFormationsPatch] Postfix: Distributing card weights based on custom assignments...");
-
-            DeploymentFormationClass[] cardClasses = new DeploymentFormationClass[8];
-            for (int i = 0; i < 8; i++)
-            {
-                cardClasses[i] = RefreshFormationPatch.GetCustomAssignmentClass(i);
-            }
-
-            int[] classCounts = new int[8];
-
-            var mainParty = MobileParty.MainParty;
-            if (mainParty?.MemberRoster != null)
-            {
-                for (int i = 0; i < mainParty.MemberRoster.Count; i++)
-                {
-                    var element = mainParty.MemberRoster.GetElementCopyAtIndex(i);
-                    if (element.Character == null) continue;
-                    if (element.Number <= element.WoundedNumber) continue;
-
-                    int assignedIndex = FormationAssignmentStore.GetAssignment(element.Character.StringId);
-                    if (assignedIndex >= 0 && assignedIndex <= 7)
-                    {
-                        int count = element.Number - element.WoundedNumber;
-                        classCounts[assignedIndex] += count;
-                    }
-                }
-            }
-
-            var mainHero = Hero.MainHero;
-            if (mainHero != null)
-            {
-                int assignedIndex = FormationAssignmentStore.GetAssignment(mainHero.CharacterObject.StringId);
-                if (assignedIndex >= 0 && assignedIndex <= 7)
-                {
-                    classCounts[assignedIndex] += 1;
-                }
-                else
-                {
-                    classCounts[2] += 1; // Default main hero to Cavalry slot
-                }
-            }
-
-            int[] totalByClass = new int[7]; // DeploymentFormationClass has values 0 to 6
-            for (int i = 0; i < 8; i++)
-            {
-                int classVal = (int)cardClasses[i];
-                if (classVal >= 0 && classVal < 7)
-                {
-                    totalByClass[classVal] += classCounts[i];
-                }
-            }
-
-            var formationsList = __instance.FormationsFirstHalf.Concat(__instance.FormationsSecondHalf).ToList();
-
-            foreach (var item in formationsList)
-            {
-                if (item.Formation == null) continue;
-                int idx = item.Formation.Index;
-                var cardClass = cardClasses[idx];
-
-                foreach (var classVM in item.Classes)
-                {
-                    if (classVM.IsUnset) continue;
-
-                    if (RefreshFormationPatch.MapToDeploymentClass(classVM.Class) == cardClass)
-                    {
-                        int total = totalByClass[(int)cardClass];
-                        int targetWeight = 0;
-                        if (total > 0)
-                        {
-                            targetWeight = (int)Math.Round((double)classCounts[idx] / total * 100);
-                        }
-                        classVM.Weight = targetWeight;
-                        Logger.Log($"[SetInitialHeroFormationsPatch] Set formation {idx} class {classVM.Class} weight to {targetWeight}%");
-                    }
-                }
-            }
+            Logger.Log("[SetInitialHeroFormationsPatch] Postfix: Distributing card weights...");
+            WeightDistributor.DistributeWeights(__instance);
         }
     }
 
@@ -314,13 +255,16 @@ namespace FormationManager.Patches
                 }
             }
 
-            // 3. Call OnSizeChanged on all cards to update counts
+            // 3. Redistribute weights on final card classes
+            WeightDistributor.DistributeWeights(__instance);
+
+            // 4. Call OnSizeChanged on all cards to update counts
             foreach (var item in formationsList)
             {
                 item.OnSizeChanged();
             }
 
-            // 4. Refresh weights and UI via reflection
+            // 5. Refresh weights and UI via reflection
             try
             {
                 AccessTools.Method(typeof(OrderOfBattleVM), "RefreshWeights").Invoke(__instance, null);
@@ -332,6 +276,91 @@ namespace FormationManager.Patches
             __instance.OnUnitDeployed();
 
             Logger.Log("[OrderOfBattleVMInitializePatch] Postfix completed successfully.");
+        }
+    }
+
+    /// <summary>
+    /// Shared helper to distribute OOB card weights based on troop counts in each formation.
+    /// </summary>
+    internal static class WeightDistributor
+    {
+        public static void DistributeWeights(OrderOfBattleVM VM)
+        {
+            DeploymentFormationClass[] cardClasses = new DeploymentFormationClass[8];
+            for (int i = 0; i < 8; i++)
+            {
+                cardClasses[i] = RefreshFormationPatch.GetCustomAssignmentClass(i);
+            }
+
+            int[] classCounts = new int[8];
+
+            var mainParty = MobileParty.MainParty;
+            if (mainParty?.MemberRoster != null)
+            {
+                for (int i = 0; i < mainParty.MemberRoster.Count; i++)
+                {
+                    var element = mainParty.MemberRoster.GetElementCopyAtIndex(i);
+                    if (element.Character == null) continue;
+                    if (element.Number <= element.WoundedNumber) continue;
+
+                    int assignedIndex = FormationAssignmentStore.GetAssignment(element.Character.StringId);
+                    if (assignedIndex >= 0 && assignedIndex <= 7)
+                    {
+                        int count = element.Number - element.WoundedNumber;
+                        classCounts[assignedIndex] += count;
+                    }
+                }
+            }
+
+            var mainHero = Hero.MainHero;
+            if (mainHero != null)
+            {
+                int assignedIndex = FormationAssignmentStore.GetAssignment(mainHero.CharacterObject.StringId);
+                if (assignedIndex >= 0 && assignedIndex <= 7)
+                {
+                    classCounts[assignedIndex] += 1;
+                }
+                else
+                {
+                    classCounts[2] += 1; // Default main hero to Cavalry slot
+                }
+            }
+
+            int[] totalByClass = new int[7]; // DeploymentFormationClass has values 0 to 6
+            for (int i = 0; i < 8; i++)
+            {
+                int classVal = (int)cardClasses[i];
+                if (classVal >= 0 && classVal < 7)
+                {
+                    totalByClass[classVal] += classCounts[i];
+                }
+            }
+
+            var formationsList = VM.FormationsFirstHalf.Concat(VM.FormationsSecondHalf).ToList();
+
+            foreach (var item in formationsList)
+            {
+                if (item.Formation == null) continue;
+                int idx = item.Formation.Index;
+                var cardClass = cardClasses[idx];
+
+                foreach (var classVM in item.Classes)
+                {
+                    if (classVM.IsUnset) continue;
+
+                    if (RefreshFormationPatch.MapToDeploymentClass(classVM.Class) == cardClass)
+                    {
+                        int total = totalByClass[(int)cardClass];
+                        int targetWeight = 0;
+                        if (total > 0)
+                        {
+                            targetWeight = (int)Math.Round((double)classCounts[idx] / total * 100);
+                        }
+                        classVM.Weight = targetWeight;
+                        Logger.Log($"[WeightDistributor] Set formation {idx} class {classVM.Class} weight to {targetWeight}%");
+                    }
+                }
+            }
         }
     }
 }
