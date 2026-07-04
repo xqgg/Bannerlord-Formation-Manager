@@ -31,6 +31,11 @@ namespace FormationManager.Patches
             if (!isPlayerSide)
                 return;
 
+            if (__instance.MissionBehaviors?.Any(b => b?.GetType().FullName?.Contains("Naval") == true) == true)
+            {
+                return; // Naval is not supported for the time being 
+            }
+
             var character = troopOrigin.Troop;
             if (character == null)
                 return;
